@@ -8,6 +8,20 @@ def test_hdf5(hdf5_files, handler):
     expected_shape = (fpp, N_rows, N_cols)
     with handler(rpath, **kwargs) as h:
         for frame in range(N_points):
+            list(handler.get_file_list(point_number=frame))  # smoke test
             d = h(point_number=frame)
             assert d.shape == expected_shape
             assert np.all(d == frame)
+
+
+@select_handler("AD_HDF5_TS")
+def test_hdf5(hdf5_files, handler):
+    (rpath, kwargs), (N_rows, N_cols, N_points, fpp) = hdf5_files
+    expected_shape = (fpp,)
+    with handler(rpath, **kwargs) as h:
+        for frame in range(N_points):
+            d = h(point_number=frame)
+            assert d.shape == expected_shape
+            assert np.all(d == frame)
+    list(h.get_file_list(dict(point_number=frame)
+         for frame in range(N_points)))

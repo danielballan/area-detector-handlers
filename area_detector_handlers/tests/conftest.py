@@ -100,6 +100,14 @@ def hdf5_files(request):
         np.ones((fpp, N_rows, N_cols)) * pt for pt in range(N_points)])
     with h5py.File(full_path, "w") as file:
         file.create_dataset('entry/data/data', data=data)
+        file.create_dataset(
+            "/entry/instrument/NDAttributes/NDArrayEpicsTSSec",
+            data=range(fpp * N_points)
+        )
+        file.create_dataset(
+            "/entry/instrument/NDAttributes/NDArrayEpicsTSnSec",
+            data=range(fpp * N_points)
+        )
 
     def finalize():
         f_dir.cleanup()

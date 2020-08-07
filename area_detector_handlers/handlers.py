@@ -459,35 +459,27 @@ class IMMHandler(HandlerBase):
 
     def __call__(self, index):
 
-        shape = (1, self.rows, self.cols)
+        shape = (self.frames_per_point, self.rows, self.cols)
 
         @dask.delayed
-        def load_plane(j):
-            # Load plane 'j' inside the chunk correspond to the Datum
-            # identified by 'index'.
+        def load_chunk():
             with open(self.filename, "rb") as file:
-                start_byte, num_pixels = self.toc[index * self.frames_per_point + j]
-                file.seek(start_byte)
-                indexes = np.fromfile(file, dtype=np.uint32, count=num_pixels)
-                values = np.fromfile(file, dtype=np.uint16, count=num_pixels)
-            # TODO Here is where we would use pydata sparse instead of literal
-            # numpy.
-            # Start with a zeroed array.
-            result = np.zeros((self.rows * self.cols), np.uint32)
-            # Fill in the sparse data.
-            result[indexes] = values
-            # Fix the shape.
-            result_reshaped = result.reshape(*shape)
-            return result_reshaped
+                planes = []
+                for j in range(self.frames_per_point):
+                    start_byte, num_pixels = self.toc[index * self.frames_per_point + j]
+                    file.seek(start_byte)
+                    indexes = np.fromfile(file, dtype=np.uint32, count=num_pixels)
+                    values = np.fromfile(file, dtype=np.uint16, count=num_pixels)
+                    # TODO Here is where we would use pydata sparse instead of literal
+                    # numpy.
+                    # Start with a zeroed array.
+                    result = np.zeros((self.rows * self.cols), np.uint32)
+                    # Fill in the sparse data.
+                    result[indexes] = values
+                    planes.append(result.reshape(self.rows, self.cols))
+            return np.array(planes)
 
-        chunks = []
-        for j in range(self.frames_per_point):
-            delayed_arr = dask.array.from_delayed(
-                load_plane(j), shape=shape, dtype=np.uint32)
-            chunks.append(delayed_arr)
-
-        result = dask.array.concatenate(chunks, axis=0)
-        return result
+        return dask.array.from_delayed(load_chunk(), shape=shape, dtype=np.uint32)
 
     def get_file_list(self, datum_kwargs_gen):
         return [self.filename]
